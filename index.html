@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="stylesheet" href="rickshaw.min.css">
+    <link rel="stylesheet" href="hh.css">
     <script src="d3-rickshaw.min.js"></script>
     <script src="rickshaw.min.js"></script>
 
@@ -17,20 +18,29 @@
     <script src="hh.js"></script>
   </head>
   <body>
-    <div style="width:800px;height:150px;" class="voltage"></div>
-    <div style="width:800px;height:80px;" class="gates"></div>
-    <div style="width:800px;height:80px;" class="current"></div>
-    <form class="voltage-clamp">
-        <label>
-            Voltage Clamp
-            <input type="text" placeholder="-65, -90, 0" />
-        </label>
-    </form>
-    <form class="add-current">
-        <label>
-            Add Current
-            <input type="text" placeholder="0,40,0" />
-        </label>
-    </form>
+    <div class="container">
+        <div class="voltage"></div>
+        <div class="gates"></div>
+        <div class="current"></div>
+        <form class="settings">
+            <label>
+                <input name="type" type="radio" value="add-current" checked />
+                Add Current
+                <input name="add-current" type="text" value="0, 20, 0, 50, 0" />
+            </label><br />
+            <label>
+                <input name="type" type="radio" value="voltage-clamp" />
+                Voltage Clamp
+                <input name="voltage-clamp" type="text" value="-65, 0, -65, -90, 0, -90" />
+            </label><br />
+            <label>gNa <input name="gNa" type="number" value="120" step="any" /></label>
+            <label>ENa <input name="VNa" type="number" value="50" step="any" /></label><br />
+            <label>gK <input name="gK" type="number" value="36" step="any" /></label>
+            <label>EK <input name="VK" type="number" value="-77" step="any" /></label><br />
+            <label>gL <input name="gL" type="number" value="0.3" step="any" /></label>
+            <label>gL <input name="VL" type="number" value="-54.4" step="any" /></label><br />
+            <input type="submit" value="Simulate!" />
+        </form>
+    </div>
   </body>
 </html>

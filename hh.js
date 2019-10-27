@@ -6,7 +6,7 @@ function HH({
     h0 = 0.6,
     m0 = 0.05,
     // Current can also be a function of time
-    I = () => 0,// pA / cm^2
+    I = null,// pA / cm^2
     VoltageClamp=null,
 
     // Setting up some constants
@@ -21,6 +21,8 @@ function HH({
     C = 1,// uF/cm^2
 }={}) {
 
+    let Ifunc = I != null ? I : () => 0;
+
     // Vars to track state
     let V = V0;
     let n = n0;
@@ -31,6 +33,8 @@ function HH({
     let ts = [];
     //let history = {V:[V], t:ts, n:[n], m:[m], h:[h], I:[0], gateI:[0], VoltageClamp:[V]}
     let history = {V:[], t:ts, n:[], m:[], h:[], I:[], gateI:[], VoltageClamp:[]};
+    history['isVC'] == VoltageClamp != null;
+    history['isI'] == I != null;
 
     // First time is initial values, so skip that...
     for (let t = 0; t <= total_time; t+=dt) {
@@ -50,7 +54,7 @@ function HH({
         let dh = dt * (alpha_h * (1 - h) - beta_h * h)
 
         // Finally, we compute next voltage.
-        let Ival = I(t)
+        let Ival = Ifunc(t)
         let gateI = (
             gNa * m ** 3 * h * (V - VNa)
             + gK * n ** 4 * (V - VK)
@@ -84,6 +88,8 @@ function HH({
 
 function rickshawRender(total_time, res) {
     let dt = 0.01;
+    let rendered = {};
+    let currentHoverDetail;
 
     function newGraph(el, datas, yUnit) {
         let graph = new Rickshaw.Graph( {
@@ -99,6 +105,41 @@ function rickshawRender(total_time, res) {
             graph: graph,
             xFormatter: function(x) { return x.toFixed(3) + "ms" },
             yFormatter: function(y) { return y.toFixed(2) + yUnit },
+            onShow() {
+                if (currentHoverDetail) {
+                    return;
+                }
+                currentHoverDetail = hoverDetail;
+                for (let key in rendered) {
+                    let value = rendered[key];
+                    if (value.hoverDetail !== hoverDetail) {
+                        value.hoverDetail.show();
+                    }
+                }
+            },
+            onHide() {
+                if (currentHoverDetail !== hoverDetail) {
+                    return;
+                }
+                for (let key in rendered) {
+                    let value = rendered[key];
+                    if (value.hoverDetail !== hoverDetail) {
+                        value.hoverDetail.hide();
+                    }
+                }
+                currentHoverDetail = null;
+            },
+            onRender() {
+                if (currentHoverDetail !== hoverDetail) {
+                    return;
+                }
+                for (let key in rendered) {
+                    let value = rendered[key];
+                    if (value.hoverDetail !== hoverDetail) {
+                        value.hoverDetail.update(this.lastEvent);
+                    }
+                }
+            },
         } );
         var yAxis = new Rickshaw.Graph.Axis.Y({
             graph: graph,
@@ -111,19 +152,48 @@ function rickshawRender(total_time, res) {
         yAxis.render();
         xAxis.render();
 
-        return graph;
+        return {graph,yAxis,xAxis,hoverDetail};
     }
 
+    rendered.voltage = newGraph(document.querySelector('.voltage'), [{name: 'V', color: 'steelblue'}], 'mV');
+    rendered.gates = newGraph(document.querySelector('.gates'), [{name: 'm'},{name:'n'},{name:'h'}], '');
+    rendered.current = newGraph(document.querySelector('.current'), [{name: 'I'}], ' current');
     return {
-        voltage: newGraph(document.querySelector('.voltage'), [{name: 'V', color: 'steelblue'}], 'mV'),
-        gates: newGraph(document.querySelector('.gates'), [{name: 'm'},{name:'n'},{name:'h'}], ''),
-        current: newGraph(document.querySelector('.current'), [{name: 'I'}], ' current'),
+        voltage: rendered.voltage.graph,
+        current: rendered.current.graph,
+        gates: rendered.gates.graph,
+        others:rendered,
     };
 }
 
 function rickshawUpdate(graph, res) {
+    function makeData(key) {
+        let skip = 10;
+        let d = res[key];
+        return res.t.filter((t, idx) => idx % skip == 0).map((t, idx) => ({x: t, y: d[idx*skip]}))
+    }
+    graph.voltage.setSeries([
+        {name: 'V', color: 'steelblue', data: makeData('V')},
+    ]);
+    graph.gates.setSeries([
+        {name: 'm', color: 'red', data: makeData('m')},
+        {name: 'n', color: 'blue', data: makeData('n')},
+        {name: 'h', color: 'green', data: makeData('h')},
+    ]);
+    graph.current.setSeries([
+        {name: 'I', color: 'orange', data: makeData('I')},
+        {name: 'gateI', color: 'blue', data: makeData('gateI')},
+    ]);
+    graph.voltage.render();
+    graph.gates.render();
+    graph.current.render();
+}
+
+function rickshawUpdateFixedSeries(graph, res) {
+    graph.voltage.setSeries([
+        {name: 'V', color: 'steelblue', data: res['V'].map((v, idx) => ({x:res.t[idx],y:v}))}]);
     res['V'].forEach((v, idx) => {
-        graph.voltage.series.addData({V: v});
+        //graph.voltage.series.addData({V: v});
         graph.gates.series.addData({
             m: res.m[idx],
             h: res.h[idx],
@@ -221,14 +291,59 @@ setTimeout(function () {
 */
 }
 
+function formSim(total_time) {
+    let form = document.querySelector('.settings');
+    let checked = form.querySelector('[name=type]:checked');
+    let type = checked ? checked.value : 'add-current';
+
+    // Simulation keywords
+    let kw = {
+        total_time: total_time,
+    };
+
+    let keys = ['gK', 'gNa', 'gL', 'VK', 'VNa', 'VL'];
+    for (let key of keys) {
+        kw[key] = form.querySelector('[name='+key+']').value;
+    }
+
+    // Parsing the command
+    let input = form.querySelector('[name='+type+']');
+    let text = input.value || input.placeholder;
+    let sequence = text.split(',').map(Number);
+    let sequenceFn = (t) => sequence[Math.floor(t/total_time*sequence.length)];
+    if (type == 'voltage-clamp') {
+        kw['VoltageClamp'] = sequenceFn;
+    } else if (type == 'add-current') {
+        kw['I'] = sequenceFn;
+    }
+
+    // Return simulation
+    return HH(kw);
+}
+
 document.addEventListener('DOMContentLoaded', (event) => {
-    let total_time = 30;
+    let total_time = 100;
 
     // Initialize first thing.
-    let res = HH({total_time:total_time, I:() => 30});
+    let res = formSim(total_time);
     let graph = rickshawRender(total_time, res);
     rickshawUpdate(graph, res);
 
+    let form = document.querySelector('.settings');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        let res = formSim(total_time);
+        rickshawUpdate(graph, res);
+    });
+
+    // When you click the text box, we want the radio to be selected too!
+    for (let key of ['add-current', 'voltage-clamp']) {
+        form.querySelector('[name='+key+']').addEventListener('focus', (e) => {
+            form.querySelector('[name=type][value='+key+']').checked = true;
+        });
+    }
+/*
     function renderSequence(form, simulate_fn) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -247,6 +362,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         document.querySelector('.add-current'),
         sequence => HH({total_time:total_time, I: (t) => sequence[Math.floor(t/total_time*sequence.length)]}),
     );
+*/
 });
 
 
