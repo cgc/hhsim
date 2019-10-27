@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="rickshaw.min.css">
+    <script src="d3-rickshaw.min.js"></script>
+    <script src="rickshaw.min.js"></script>
+
+    <!--<script src="d3.min.js"></script>
+    <link rel="stylesheet" href="c3.min.css">
+    <script src="c3.min.js"></script>-->
+
+    <script src="hh.js"></script>
+  </head>
+  <body>
+    <div style="width:800px;height:150px;" class="voltage"></div>
+    <div style="width:800px;height:80px;" class="gates"></div>
+    <div style="width:800px;height:80px;" class="current"></div>
+    <form class="voltage-clamp">
+        <label>
+            Voltage Clamp
+            <input type="text" placeholder="-65, -90, 0" />
+        </label>
+    </form>
+    <form class="add-current">
+        <label>
+            Add Current
+            <input type="text" placeholder="0,40,0" />
+        </label>
+    </form>
+  </body>
+</html>
