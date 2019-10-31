@@ -1,12 +1,15 @@
 function HH({
     dt = 0.01,// ms
     total_time = 200,// ms
-    V0 = -70,// mV
-    n0 = 0.4,
+
+    // These starting params are the steady state for the below conductances and equilibrium potentials.
+    V0 = -65,// mV
+    n0 = 0.32,
     h0 = 0.6,
     m0 = 0.05,
-    // Current can also be a function of time
-    I = null,// pA / cm^2
+
+    // Current and Voltage Clamp can be a function of time
+    I = null,// uA / cm^2
     VoltageClamp=null,
 
     // Setting up some constants
@@ -32,9 +35,12 @@ function HH({
     // Vars to hold history
     let ts = [];
     //let history = {V:[V], t:ts, n:[n], m:[m], h:[h], I:[0], gateI:[0], VoltageClamp:[V]}
-    let history = {V:[], t:ts, n:[], m:[], h:[], I:[], gateI:[], VoltageClamp:[]};
-    history['isVC'] == VoltageClamp != null;
-    history['isI'] == I != null;
+    let history = {
+        V:[], t:ts, n:[], m:[], h:[], I:[],
+        gateI:[], VoltageClamp:[],
+        isVoltageClamp: VoltageClamp != null,
+        isAddCurrent: I != null,
+    };
 
     // First time is initial values, so skip that...
     for (let t = 0; t <= total_time; t+=dt) {
@@ -61,11 +67,11 @@ function HH({
             + gL * (V - VL)
         );
         // Adding voltage clamp
-        let vcI = 0
+        let vcI = 0;
         if (VoltageClamp != null) {
-            let vc = VoltageClamp(t)
-            vcI = (vc - V) * C / dt
-            history['VoltageClamp'].push(vc)
+            let vc = VoltageClamp(t);
+            vcI = (vc - V) * C / dt;
+            history['VoltageClamp'].push(vc);
         }
         let dV = dt * (Ival - gateI + vcI) / C
 
@@ -83,7 +89,7 @@ function HH({
         history['I'].push(Ival)
         history['gateI'].push(gateI)
     }
-    return history
+    return history;
 }
 
 function rickshawRender(total_time, res) {
@@ -142,6 +148,7 @@ function rickshawRender(total_time, res) {
             },
         } );
         var yAxis = new Rickshaw.Graph.Axis.Y({
+            //orientation: 'right',
             graph: graph,
         });
         var xAxis = new Rickshaw.Graph.Axis.X({
@@ -157,7 +164,7 @@ function rickshawRender(total_time, res) {
 
     rendered.voltage = newGraph(document.querySelector('.voltage'), [{name: 'V', color: 'steelblue'}], 'mV');
     rendered.gates = newGraph(document.querySelector('.gates'), [{name: 'm'},{name:'n'},{name:'h'}], '');
-    rendered.current = newGraph(document.querySelector('.current'), [{name: 'I'}], ' current');
+    rendered.current = newGraph(document.querySelector('.current'), [{name: 'I'}], ' μA/cm<sup>2</sup>');
     return {
         voltage: rendered.voltage.graph,
         current: rendered.current.graph,
@@ -173,7 +180,7 @@ function rickshawUpdate(graph, res) {
         return res.t.filter((t, idx) => idx % skip == 0).map((t, idx) => ({x: t, y: d[idx*skip]}))
     }
     graph.voltage.setSeries([
-        {name: 'V', color: 'steelblue', data: makeData('V')},
+        {name: 'V', color: 'steelblue', data: res.isVoltageClamp ? makeData('VoltageClamp') : makeData('V')},
     ]);
     graph.gates.setSeries([
         {name: 'm', color: 'red', data: makeData('m')},
@@ -181,19 +188,19 @@ function rickshawUpdate(graph, res) {
         {name: 'h', color: 'green', data: makeData('h')},
     ]);
     graph.current.setSeries([
-        {name: 'I', color: 'orange', data: makeData('I')},
         {name: 'gateI', color: 'blue', data: makeData('gateI')},
-    ]);
+        (res.isAddCurrent ? {name: 'I', color: 'orange', data: makeData('I')} : null),
+    ].filter(x => x));
     graph.voltage.render();
     graph.gates.render();
     graph.current.render();
 }
 
 function rickshawUpdateFixedSeries(graph, res) {
-    graph.voltage.setSeries([
-        {name: 'V', color: 'steelblue', data: res['V'].map((v, idx) => ({x:res.t[idx],y:v}))}]);
+    //graph.voltage.setSeries([
+    //    {name: 'V', color: 'steelblue', data: res['V'].map((v, idx) => ({x:res.t[idx],y:v}))}]);
     res['V'].forEach((v, idx) => {
-        //graph.voltage.series.addData({V: v});
+        graph.voltage.series.addData({V: v});
         graph.gates.series.addData({
             m: res.m[idx],
             h: res.h[idx],

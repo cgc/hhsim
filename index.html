@@ -19,26 +19,30 @@
   </head>
   <body>
     <div class="container">
+        <h2>Hodgkin-Huxley Simulation</h2>
+        <p>
+            This simulation of the Hodgkin-Huxley equations is a simple model of a neuron, based on code I wrote in graduate coursework at Princeton. By adding current or setting a voltage clamp, you can observe the predictions this simple model makes. This model includes terms for the sodium channel (m and h gates) and the potassium channel (n gate). In addition, it has a term for leak channels (which have relatively small conductance).
+        </p>
         <div class="voltage"></div>
         <div class="gates"></div>
         <div class="current"></div>
         <form class="settings">
             <label>
                 <input name="type" type="radio" value="add-current" checked />
-                Add Current
-                <input name="add-current" type="text" value="0, 20, 0, 50, 0" />
+                Add Current (μA/cm<sup>2</sup>)
+                <input name="add-current" type="text" value="0, 5, 0, 50, 0" />
             </label><br />
             <label>
                 <input name="type" type="radio" value="voltage-clamp" />
-                Voltage Clamp
+                Voltage Clamp (mV)
                 <input name="voltage-clamp" type="text" value="-65, 0, -65, -90, 0, -90" />
             </label><br />
-            <label>gNa <input name="gNa" type="number" value="120" step="any" /></label>
-            <label>ENa <input name="VNa" type="number" value="50" step="any" /></label><br />
-            <label>gK <input name="gK" type="number" value="36" step="any" /></label>
-            <label>EK <input name="VK" type="number" value="-77" step="any" /></label><br />
-            <label>gL <input name="gL" type="number" value="0.3" step="any" /></label>
-            <label>gL <input name="VL" type="number" value="-54.4" step="any" /></label><br />
+            <label>g<sub>Na</sub> (mS/cm<sup>2</sup>) <input name="gNa" type="number" value="120" step="any" /></label>
+            <label>E<sub>Na</sub> (mV) <input name="VNa" type="number" value="50" step="any" /></label><br />
+            <label>g<sub>K</sub> (mS/cm<sup>2</sup>) <input name="gK" type="number" value="36" step="any" /></label>
+            <label>E<sub>K</sub> (mV) <input name="VK" type="number" value="-77" step="any" /></label><br />
+            <label>g<sub>L</sub> (mS/cm<sup>2</sup>) <input name="gL" type="number" value="0.3" step="any" /></label>
+            <label>E<sub>L</sub> (mV) <input name="VL" type="number" value="-54.4" step="any" /></label><br />
             <input type="submit" value="Simulate!" />
         </form>
     </div>
